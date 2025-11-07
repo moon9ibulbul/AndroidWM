@@ -1,0 +1,15 @@
+<resources>
+    <string-array name="watermark_positions">
+        <item>Top left</item>
+        <item>Top center</item>
+        <item>Top right</item>
+        <item>Center left</item>
+        <item>Center</item>
+        <item>Center right</item>
+        <item>Bottom left</item>
+        <item>Bottom center</item>
+        <item>Bottom right</item>
+        <item>Random</item>
+        <item>Smart</item>
+    </string-array>
+</resources>

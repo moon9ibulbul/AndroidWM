@@ -24,6 +24,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -39,6 +40,9 @@ import android.media.MediaScannerConnection;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -103,10 +107,14 @@ public class MainActivity extends AppCompatActivity {
     private ImageView watermarkView;
     private Bitmap watermarkBitmap;
     private TextView placeholderView;
+    private TextView positionLabel;
 
     private EditText editText;
 
     private ProgressBar progressBar;
+    private Spinner positionSpinner;
+
+    private PlacementOption selectedPlacement = PlacementOption.CENTER;
 
     private ActivityResultLauncher<String[]> pickBackgroundLauncher;
     private ActivityResultLauncher<String[]> pickWatermarkLauncher;
@@ -115,6 +123,17 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] IMAGE_MIME_TYPES = new String[]{"image/*"};
     private static final String OUTPUT_DIRECTORY = "AndroidWM";
     private static final String OUTPUT_FILE_PREFIX = "watermark_";
+    private static final PlacementOption[] SMART_EVALUATION_ORDER = {
+            PlacementOption.TOP_LEFT,
+            PlacementOption.TOP_CENTER,
+            PlacementOption.TOP_RIGHT,
+            PlacementOption.CENTER_LEFT,
+            PlacementOption.CENTER,
+            PlacementOption.CENTER_RIGHT,
+            PlacementOption.BOTTOM_LEFT,
+            PlacementOption.BOTTOM_CENTER,
+            PlacementOption.BOTTOM_RIGHT
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,12 +167,16 @@ public class MainActivity extends AppCompatActivity {
         backgroundView = findViewById(R.id.imageView);
         watermarkView = findViewById(R.id.imageView_watermark);
         placeholderView = findViewById(R.id.text_placeholder);
+        positionLabel = findViewById(R.id.label_watermark_position);
+        positionSpinner = findViewById(R.id.spinner_watermark_position);
 
         progressBar = findViewById(R.id.progressBar);
 
+        setupPositionSpinner();
         resetBackground();
         loadDefaultWatermark();
         updateInvisibleOptions();
+        updatePlacementAvailability();
     }
 
     private void initEvents() {
@@ -162,6 +185,11 @@ public class MainActivity extends AppCompatActivity {
             String markText = editText.getText().toString();
             if(markText.trim().isEmpty()){
                 Toast.makeText(this, R.string.toast_enter_text_first, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Bitmap backgroundBitmap = extractBitmapFromImageView(backgroundView);
+            if (backgroundBitmap == null) {
+                Toast.makeText(this, R.string.toast_no_background, Toast.LENGTH_SHORT).show();
                 return;
             }
             if (mode_invisible.isChecked()) {
@@ -191,12 +219,21 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, R.string.toast_watermark_not_ready, Toast.LENGTH_SHORT).show();
                 return;
             }
+            Bitmap backgroundBitmap = extractBitmapFromImageView(backgroundView);
+            if (backgroundBitmap == null) {
+                Toast.makeText(this, R.string.toast_no_background, Toast.LENGTH_SHORT).show();
+                return;
+            }
             if (mode_invisible.isChecked()) {
                 createInvisibleImgMark();
                 return;
             }
-            // Math.random()
-            WatermarkImage watermarkImage = createWatermarkImage(watermarkBitmap, true);
+
+            WatermarkImage watermarkImage = createWatermarkImage(watermarkBitmap, backgroundBitmap, selectedPlacement);
+            if (watermarkImage == null) {
+                Toast.makeText(this, R.string.toast_watermark_not_ready, Toast.LENGTH_SHORT).show();
+                return;
+            }
 
             WatermarkBuilder
                     .create(this, backgroundView)
@@ -228,8 +265,13 @@ public class MainActivity extends AppCompatActivity {
 
         // detect the text watermark.
         btnDetectText.setOnClickListener((View v) -> {
+            Bitmap detectionBitmap = prepareDetectionBitmap();
+            if (detectionBitmap == null) {
+                Toast.makeText(this, R.string.toast_no_background, Toast.LENGTH_SHORT).show();
+                return;
+            }
             progressBar.setVisibility(View.VISIBLE);
-            WatermarkDetector.create(backgroundView, isLsbSelected())
+            WatermarkDetector.create(detectionBitmap, isLsbSelected())
                     .detect(new DetectFinishListener() {
                         @Override
                         public void onSuccess(DetectionReturnValue returnValue) {
@@ -254,8 +296,13 @@ public class MainActivity extends AppCompatActivity {
 
         // detect the image watermark.
         btnDetectImage.setOnClickListener((View v) -> {
+            Bitmap detectionBitmap = prepareDetectionBitmap();
+            if (detectionBitmap == null) {
+                Toast.makeText(this, R.string.toast_no_background, Toast.LENGTH_SHORT).show();
+                return;
+            }
             progressBar.setVisibility(View.VISIBLE);
-            WatermarkDetector.create(backgroundView, isLsbSelected())
+            WatermarkDetector.create(detectionBitmap, isLsbSelected())
                     .detect(new DetectFinishListener() {
                         @Override
                         public void onSuccess(DetectionReturnValue returnValue) {
@@ -369,6 +416,44 @@ public class MainActivity extends AppCompatActivity {
         }
         if (modeInvisibleFd != null) {
             modeInvisibleFd.setEnabled(enableInvisibleOptions);
+        }
+        updatePlacementAvailability();
+    }
+
+    private void setupPositionSpinner() {
+        if (positionSpinner == null) {
+            return;
+        }
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.watermark_positions, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        positionSpinner.setAdapter(adapter);
+        positionSpinner.setSelection(selectedPlacement.ordinal());
+        positionSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                PlacementOption[] values = PlacementOption.values();
+                if (position >= 0 && position < values.length) {
+                    selectedPlacement = values[position];
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // no-op
+            }
+        });
+    }
+
+    private void updatePlacementAvailability() {
+        boolean enablePlacement = mode_single.isChecked() && !mode_invisible.isChecked();
+        if (positionSpinner != null) {
+            positionSpinner.setEnabled(enablePlacement);
+            positionSpinner.setAlpha(enablePlacement ? 1f : 0.4f);
+        }
+        if (positionLabel != null) {
+            positionLabel.setEnabled(enablePlacement);
+            positionLabel.setAlpha(enablePlacement ? 1f : 0.4f);
         }
     }
 
@@ -498,6 +583,31 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
+    private Bitmap prepareDetectionBitmap() {
+        Bitmap source = extractBitmapFromImageView(backgroundView);
+        if (source == null) {
+            return null;
+        }
+        Bitmap.Config config = source.getConfig();
+        if (config == null) {
+            config = Bitmap.Config.ARGB_8888;
+        }
+        Bitmap copy = null;
+        try {
+            copy = source.copy(config, false);
+        } catch (IllegalArgumentException exception) {
+            Timber.w(exception, "Unable to copy bitmap for detection using original config");
+        }
+        if (copy == null && config != Bitmap.Config.ARGB_8888) {
+            try {
+                copy = source.copy(Bitmap.Config.ARGB_8888, false);
+            } catch (IllegalArgumentException exception) {
+                Timber.w(exception, "Unable to copy bitmap for detection using ARGB_8888");
+            }
+        }
+        return copy != null ? copy : source;
+    }
+
     private static boolean saveBitmapToGallery(Context context, Bitmap bitmap, String displayName) {
         if (context == null || bitmap == null) {
             return false;
@@ -562,22 +672,232 @@ public class MainActivity extends AppCompatActivity {
         return OUTPUT_FILE_PREFIX + System.currentTimeMillis() + "_" + System.nanoTime();
     }
 
-    private WatermarkImage createWatermarkImage(Bitmap bitmap, boolean randomizePosition) {
-        if (bitmap == null) {
+    private WatermarkImage createWatermarkImage(Bitmap bitmap, Bitmap backgroundBitmap, PlacementOption placement) {
+        if (bitmap == null || backgroundBitmap == null) {
             return null;
         }
         WatermarkImage watermarkImage = new WatermarkImage(bitmap)
                 .setImageAlpha(80)
-                .setOrigin(new WatermarkPosition(0.5, 0.5))
                 .setRotation(15)
                 .setSize(0.1);
-        if (randomizePosition) {
-            watermarkImage.setPositionX(Math.random());
-            watermarkImage.setPositionY(Math.random());
-        } else {
-            watermarkImage.setPosition(new WatermarkPosition(0.5, 0.5));
-        }
+
+        PlacementResult placementResult = resolvePlacement(backgroundBitmap, bitmap, watermarkImage.getSize(), placement);
+        watermarkImage.setPosition(placementResult.position);
+        watermarkImage.setOrigin(placementResult.origin);
         return watermarkImage;
+    }
+
+    private PlacementResult resolvePlacement(Bitmap backgroundBitmap, Bitmap watermarkBitmap,
+                                             double watermarkSize, PlacementOption placement) {
+        if (placement == null) {
+            placement = PlacementOption.CENTER;
+        }
+        if (placement.hasPreset()) {
+            return new PlacementResult(placement.createPosition(), placement.createOrigin());
+        }
+        if (placement == PlacementOption.RANDOM) {
+            return createRandomPlacement(backgroundBitmap, watermarkBitmap, watermarkSize);
+        }
+        if (placement == PlacementOption.SMART) {
+            return createSmartPlacement(backgroundBitmap, watermarkBitmap, watermarkSize);
+        }
+        return new PlacementResult(new WatermarkPosition(0.5, 0.5), new WatermarkPosition(0.5, 0.5));
+    }
+
+    private PlacementResult createRandomPlacement(Bitmap backgroundBitmap, Bitmap watermarkBitmap,
+                                                  double watermarkSize) {
+        if (backgroundBitmap == null || watermarkBitmap == null) {
+            return new PlacementResult(new WatermarkPosition(0.5, 0.5), new WatermarkPosition(0.5, 0.5));
+        }
+        WatermarkDimensions dimensions = calculateWatermarkDimensions(backgroundBitmap, watermarkBitmap, watermarkSize);
+        double marginX = Math.min(0.5, Math.max(0, dimensions.widthRatio / 2.0));
+        double marginY = Math.min(0.5, Math.max(0, dimensions.heightRatio / 2.0));
+        double rangeX = Math.max(0, 1 - 2 * marginX);
+        double rangeY = Math.max(0, 1 - 2 * marginY);
+        double positionX = rangeX > 0 ? marginX + Math.random() * rangeX : 0.5;
+        double positionY = rangeY > 0 ? marginY + Math.random() * rangeY : 0.5;
+        return new PlacementResult(new WatermarkPosition(positionX, positionY),
+                new WatermarkPosition(0.5, 0.5));
+    }
+
+    private PlacementResult createSmartPlacement(Bitmap backgroundBitmap, Bitmap watermarkBitmap,
+                                                 double watermarkSize) {
+        if (backgroundBitmap == null || watermarkBitmap == null) {
+            return new PlacementResult(new WatermarkPosition(0.5, 0.5), new WatermarkPosition(0.5, 0.5));
+        }
+        WatermarkDimensions dimensions = calculateWatermarkDimensions(backgroundBitmap, watermarkBitmap, watermarkSize);
+        int markWidth = Math.max(1, (int) Math.round(backgroundBitmap.getWidth() * dimensions.widthRatio));
+        int markHeight = Math.max(1, (int) Math.round(backgroundBitmap.getHeight() * dimensions.heightRatio));
+        PlacementResult bestPlacement = null;
+        double bestScore = Double.MAX_VALUE;
+
+        for (PlacementOption option : SMART_EVALUATION_ORDER) {
+            PlacementResult candidate = new PlacementResult(option.createPosition(), option.createOrigin());
+            Rect region = calculatePlacementRect(candidate, backgroundBitmap.getWidth(), backgroundBitmap.getHeight(),
+                    markWidth, markHeight);
+            double score = calculateRegionScore(backgroundBitmap, region);
+            if (score < bestScore) {
+                bestScore = score;
+                bestPlacement = candidate;
+            }
+        }
+
+        if (bestPlacement == null) {
+            return new PlacementResult(new WatermarkPosition(0.5, 0.5), new WatermarkPosition(0.5, 0.5));
+        }
+        return bestPlacement;
+    }
+
+    private Rect calculatePlacementRect(PlacementResult placement, int backgroundWidth, int backgroundHeight,
+                                        int markWidth, int markHeight) {
+        double anchorX = placement.position.getPositionX() * backgroundWidth;
+        double anchorY = placement.position.getPositionY() * backgroundHeight;
+        double offsetX = placement.origin.getPositionX() * markWidth;
+        double offsetY = placement.origin.getPositionY() * markHeight;
+        int left = clamp((int) Math.round(anchorX - offsetX), 0, Math.max(0, backgroundWidth - markWidth));
+        int top = clamp((int) Math.round(anchorY - offsetY), 0, Math.max(0, backgroundHeight - markHeight));
+        int right = Math.min(backgroundWidth, left + markWidth);
+        int bottom = Math.min(backgroundHeight, top + markHeight);
+        return new Rect(left, top, right, bottom);
+    }
+
+    private double calculateRegionScore(Bitmap backgroundBitmap, Rect region) {
+        int regionWidth = region.width();
+        int regionHeight = region.height();
+        if (regionWidth <= 0 || regionHeight <= 0) {
+            return Double.MAX_VALUE;
+        }
+        int stepX = Math.max(1, regionWidth / 10);
+        int stepY = Math.max(1, regionHeight / 10);
+        int columnCount = Math.max(1, (int) Math.ceil((double) regionWidth / stepX));
+        int[] previousRow = new int[columnCount];
+        boolean firstRow = true;
+        double sum = 0;
+        double sumSquares = 0;
+        double gradient = 0;
+        int count = 0;
+
+        for (int y = region.top; y < region.bottom; y += stepY) {
+            int previousGray = -1;
+            int columnIndex = 0;
+            for (int x = region.left; x < region.right; x += stepX) {
+                int pixel = backgroundBitmap.getPixel(x, y);
+                int gray = (int) (0.299 * Color.red(pixel) + 0.587 * Color.green(pixel) + 0.114 * Color.blue(pixel));
+                sum += gray;
+                sumSquares += (double) gray * gray;
+                if (previousGray >= 0) {
+                    gradient += Math.abs(gray - previousGray);
+                }
+                if (!firstRow && columnIndex < previousRow.length) {
+                    gradient += Math.abs(gray - previousRow[columnIndex]);
+                }
+                if (columnIndex < previousRow.length) {
+                    previousRow[columnIndex] = gray;
+                }
+                previousGray = gray;
+                columnIndex++;
+                count++;
+            }
+            firstRow = false;
+        }
+
+        if (count == 0) {
+            return Double.MAX_VALUE;
+        }
+        double mean = sum / count;
+        double variance = sumSquares / count - mean * mean;
+        double normalizedGradient = gradient / Math.max(1, count);
+        return variance + normalizedGradient;
+    }
+
+    private WatermarkDimensions calculateWatermarkDimensions(Bitmap backgroundBitmap, Bitmap watermarkBitmap,
+                                                             double watermarkSize) {
+        if (backgroundBitmap == null || watermarkBitmap == null || watermarkSize <= 0) {
+            return new WatermarkDimensions(0.2, 0.2);
+        }
+        double widthRatio = watermarkSize;
+        double scale = (backgroundBitmap.getWidth() * watermarkSize) / watermarkBitmap.getWidth();
+        double scaledHeight = watermarkBitmap.getHeight() * scale;
+        double heightRatio = scaledHeight / backgroundBitmap.getHeight();
+        return new WatermarkDimensions(widthRatio, heightRatio);
+    }
+
+    private int clamp(int value, int min, int max) {
+        if (value < min) {
+            return min;
+        }
+        if (value > max) {
+            return max;
+        }
+        return value;
+    }
+
+    private static class PlacementResult {
+        final WatermarkPosition position;
+        final WatermarkPosition origin;
+
+        PlacementResult(WatermarkPosition position, WatermarkPosition origin) {
+            this.position = position;
+            this.origin = origin;
+        }
+    }
+
+    private static class WatermarkDimensions {
+        final double widthRatio;
+        final double heightRatio;
+
+        WatermarkDimensions(double widthRatio, double heightRatio) {
+            this.widthRatio = widthRatio;
+            this.heightRatio = heightRatio;
+        }
+    }
+
+    private enum PlacementOption {
+        TOP_LEFT(0.0, 0.0, 0.0, 0.0),
+        TOP_CENTER(0.5, 0.0, 0.5, 0.0),
+        TOP_RIGHT(1.0, 0.0, 1.0, 0.0),
+        CENTER_LEFT(0.0, 0.5, 0.0, 0.5),
+        CENTER(0.5, 0.5, 0.5, 0.5),
+        CENTER_RIGHT(1.0, 0.5, 1.0, 0.5),
+        BOTTOM_LEFT(0.0, 1.0, 0.0, 1.0),
+        BOTTOM_CENTER(0.5, 1.0, 0.5, 1.0),
+        BOTTOM_RIGHT(1.0, 1.0, 1.0, 1.0),
+        RANDOM(),
+        SMART();
+
+        private final double posX;
+        private final double posY;
+        private final double originX;
+        private final double originY;
+        private final boolean hasPreset;
+
+        PlacementOption(double posX, double posY, double originX, double originY) {
+            this.posX = posX;
+            this.posY = posY;
+            this.originX = originX;
+            this.originY = originY;
+            this.hasPreset = true;
+        }
+
+        PlacementOption() {
+            this.posX = 0.5;
+            this.posY = 0.5;
+            this.originX = 0.5;
+            this.originY = 0.5;
+            this.hasPreset = false;
+        }
+
+        boolean hasPreset() {
+            return hasPreset;
+        }
+
+        WatermarkPosition createPosition() {
+            return new WatermarkPosition(posX, posY);
+        }
+
+        WatermarkPosition createOrigin() {
+            return new WatermarkPosition(originX, originY);
+        }
     }
 
     private void processBulkWatermarks(List<Uri> uris) {
@@ -598,7 +918,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        new BulkWatermarkTask(this, new ArrayList<>(uris), watermarkBitmap, mode_tile.isChecked())
+        new BulkWatermarkTask(this, new ArrayList<>(uris), watermarkBitmap, mode_tile.isChecked(), selectedPlacement)
                 .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
@@ -626,12 +946,15 @@ public class MainActivity extends AppCompatActivity {
         private final List<Uri> backgroundUris;
         private final Bitmap watermarkBitmap;
         private final boolean tileMode;
+        private final PlacementOption placementOption;
 
-        BulkWatermarkTask(MainActivity activity, List<Uri> backgroundUris, Bitmap watermarkBitmap, boolean tileMode) {
+        BulkWatermarkTask(MainActivity activity, List<Uri> backgroundUris, Bitmap watermarkBitmap,
+                          boolean tileMode, PlacementOption placementOption) {
             this.activityReference = new WeakReference<>(activity);
             this.backgroundUris = backgroundUris;
             this.watermarkBitmap = watermarkBitmap;
             this.tileMode = tileMode;
+            this.placementOption = placementOption;
         }
 
         @Override
@@ -659,7 +982,7 @@ public class MainActivity extends AppCompatActivity {
                     continue;
                 }
 
-                WatermarkImage watermarkImage = activity.createWatermarkImage(watermarkBitmap, false);
+                WatermarkImage watermarkImage = activity.createWatermarkImage(watermarkBitmap, background, placementOption);
                 if (watermarkImage == null) {
                     continue;
                 }

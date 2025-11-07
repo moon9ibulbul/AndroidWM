@@ -20,6 +20,7 @@
     <string name="label_invisible_methods">Invisible method:</string>
     <string name="label_invisible_lsb">LSB</string>
     <string name="label_invisible_fd">Frequency</string>
+    <string name="label_watermark_position">Watermark position:</string>
     <string name="toast_create_image_success">Created %1$s invisible watermark image.</string>
     <string name="toast_create_text_success">Created %1$s invisible watermark text.</string>
     <string name="toast_detect_image_success">Detected %1$s invisible image watermark.</string>

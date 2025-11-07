@@ -20,6 +20,10 @@ package com.watermark.androidwm.utils;
 import com.watermark.androidwm.listener.DetectFinishListener;
 
 import static com.watermark.androidwm.utils.Constant.ERROR_NO_WATERMARK_FOUND;
+import static com.watermark.androidwm.utils.Constant.FD_IMG_PREFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_IMG_SUFFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_TEXT_PREFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_TEXT_SUFFIX_FLAG;
 import static com.watermark.androidwm.utils.Constant.LSB_IMG_PREFIX_FLAG;
 import static com.watermark.androidwm.utils.Constant.LSB_IMG_SUFFIX_FLAG;
 import static com.watermark.androidwm.utils.Constant.LSB_TEXT_PREFIX_FLAG;
@@ -107,25 +111,26 @@ public class StringUtils {
      * @param text Text to search in.
      */
     public static String getBetweenStrings(String text, boolean isText, DetectFinishListener listener) {
-        String result = null;
         if (isText) {
-            try {
-                result = text.substring(text.indexOf(LSB_TEXT_PREFIX_FLAG) + LSB_TEXT_SUFFIX_FLAG.length(),
-                        text.length());
-                result = result.substring(0, result.indexOf(LSB_TEXT_SUFFIX_FLAG));
-            } catch (StringIndexOutOfBoundsException e) {
-                listener.onFailure(ERROR_NO_WATERMARK_FOUND);
-            }
-        } else {
-            try {
-                result = text.substring(text.indexOf(LSB_IMG_PREFIX_FLAG) + LSB_IMG_SUFFIX_FLAG.length(),
-                        text.length());
-                result = result.substring(0, result.indexOf(LSB_IMG_SUFFIX_FLAG));
-            } catch (StringIndexOutOfBoundsException e) {
-                listener.onFailure(ERROR_NO_WATERMARK_FOUND);
-            }
+            return getBetweenStrings(text, LSB_TEXT_PREFIX_FLAG, LSB_TEXT_SUFFIX_FLAG, listener);
         }
+        return getBetweenStrings(text, LSB_IMG_PREFIX_FLAG, LSB_IMG_SUFFIX_FLAG, listener);
+    }
 
+    public static String getBetweenStrings(String text, String prefixFlag, String suffixFlag,
+                                           DetectFinishListener listener) {
+        String result = null;
+        try {
+            int prefixIndex = text.indexOf(prefixFlag);
+            int suffixIndex = text.indexOf(suffixFlag, prefixIndex + prefixFlag.length());
+            if (prefixIndex >= 0 && suffixIndex > prefixIndex) {
+                result = text.substring(prefixIndex + prefixFlag.length(), suffixIndex);
+            } else {
+                listener.onFailure(ERROR_NO_WATERMARK_FOUND);
+            }
+        } catch (StringIndexOutOfBoundsException e) {
+            listener.onFailure(ERROR_NO_WATERMARK_FOUND);
+        }
         return result;
     }
 

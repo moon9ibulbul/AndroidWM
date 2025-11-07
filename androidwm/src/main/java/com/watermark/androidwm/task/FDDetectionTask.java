@@ -22,14 +22,20 @@ import android.os.AsyncTask;
 import com.watermark.androidwm.listener.DetectFinishListener;
 import com.watermark.androidwm.utils.FastDctFft;
 
-import static com.watermark.androidwm.utils.BitmapUtils.pixel2ARGBArray;
 import static com.watermark.androidwm.utils.BitmapUtils.getBitmapPixels;
-import static com.watermark.androidwm.utils.Constant.CHUNK_SIZE;
+import static com.watermark.androidwm.utils.BitmapUtils.pixel2ARGBArray;
+import static com.watermark.androidwm.utils.BitmapUtils.stringToBitmap;
 import static com.watermark.androidwm.utils.Constant.ERROR_BITMAP_NULL;
 import static com.watermark.androidwm.utils.Constant.ERROR_DETECT_FAILED;
+import static com.watermark.androidwm.utils.Constant.FD_IMG_PREFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_IMG_SUFFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_TEXT_PREFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_TEXT_SUFFIX_FLAG;
 import static com.watermark.androidwm.utils.Constant.MAX_IMAGE_SIZE;
 import static com.watermark.androidwm.utils.Constant.WARNING_BIG_IMAGE;
+import static com.watermark.androidwm.utils.StringUtils.binaryToString;
 import static com.watermark.androidwm.utils.StringUtils.copyFromIntArray;
+import static com.watermark.androidwm.utils.StringUtils.getBetweenStrings;
 
 /**
  * This is a task for watermark image detection.
@@ -62,43 +68,30 @@ public class FDDetectionTask extends AsyncTask<Bitmap, Void, DetectionReturnValu
         }
 
         int[] pixels = getBitmapPixels(markedBitmap);
+        int[] colorArray = pixel2ARGBArray(pixels);
+        double[] frequencyArray = copyFromIntArray(colorArray);
+        FastDctFft.transform(frequencyArray);
 
-        // divide and conquer
-        if (pixels.length < CHUNK_SIZE) {
-            int[] watermarkRGB = pixel2ARGBArray(pixels);
-            double[] watermarkArray = copyFromIntArray(watermarkRGB);
-            FastDctFft.transform(watermarkArray);
-
-            //TODO: do some operations with colorTempArray.
-
-
-        } else {
-            int numOfChunks = (int) Math.ceil((double) pixels.length / CHUNK_SIZE);
-            for (int i = 0; i < numOfChunks; i++) {
-                int start = i * CHUNK_SIZE;
-                int length = Math.min(pixels.length - start, CHUNK_SIZE);
-                int[] temp = new int[length];
-                System.arraycopy(pixels, start, temp, 0, length);
-                double[] colorTempArray = copyFromIntArray(pixel2ARGBArray(temp));
-                FastDctFft.transform(colorTempArray);
-
-                //TODO: do some operations with colorTempArray.
-
-            }
+        StringBuilder binaryBuilder = new StringBuilder(frequencyArray.length);
+        for (double value : frequencyArray) {
+            int digit = Math.abs(((int) Math.round(value)) % 10);
+            binaryBuilder.append(digit);
         }
 
-/*        TODO: new detection operations will replace this block.
-        String resultString;
-
-        if (binaryString.contains(LSB_TEXT_PREFIX_FLAG) && binaryString.contains(LSB_TEXT_SUFFIX_FLAG)) {
-            resultString = getBetweenStrings(binaryString, true, listener);
-            resultString = binaryToString(resultString);
-            resultValue.setWatermarkString(resultString);
-        } else if (binaryString.contains(LSB_IMG_PREFIX_FLAG) && binaryString.contains(LSB_IMG_SUFFIX_FLAG)) {
-            binaryString = getBetweenStrings(binaryString, false, listener);
-            resultString = binaryToString(binaryString);
-            resultValue.setWatermarkBitmap(BitmapUtils.stringToBitmap(resultString));
-        }*/
+        String binaryString = binaryBuilder.toString();
+        if (binaryString.contains(FD_TEXT_PREFIX_FLAG) && binaryString.contains(FD_TEXT_SUFFIX_FLAG)) {
+            String watermarkBinary = getBetweenStrings(binaryString, FD_TEXT_PREFIX_FLAG, FD_TEXT_SUFFIX_FLAG, listener);
+            if (watermarkBinary != null) {
+                String resultString = binaryToString(watermarkBinary);
+                resultValue.setWatermarkString(resultString);
+            }
+        } else if (binaryString.contains(FD_IMG_PREFIX_FLAG) && binaryString.contains(FD_IMG_SUFFIX_FLAG)) {
+            String watermarkBinary = getBetweenStrings(binaryString, FD_IMG_PREFIX_FLAG, FD_IMG_SUFFIX_FLAG, listener);
+            if (watermarkBinary != null) {
+                String resultString = binaryToString(watermarkBinary);
+                resultValue.setWatermarkBitmap(stringToBitmap(resultString));
+            }
+        }
 
         return resultValue;
     }
