@@ -1,4 +1,4 @@
-package com.watermark.androidwm.sample;
+package com.astral.wm;
 
 import android.content.Context;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("com.androidwm.watermark.androidwm", appContext.getPackageName());
+        assertEquals("com.astral.wm", appContext.getPackageName());
     }
 }

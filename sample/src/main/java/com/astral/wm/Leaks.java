@@ -14,7 +14,7 @@
  *   limitations under the License.
  *
  */
-package com.watermark.androidwm.sample;
+package com.astral.wm;
 
 import android.app.Application;
 

@@ -14,7 +14,7 @@
  *   limitations under the License.
  *
  */
-package com.watermark.androidwm.sample;
+package com.astral.wm;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -25,9 +25,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
@@ -54,6 +55,10 @@ public class MainActivity extends AppCompatActivity {
     private RadioButton mode_single;
     private RadioButton mode_tile;
     private RadioButton mode_invisible;
+    private LinearLayout invisibleMethodsLayout;
+    private RadioGroup invisibleGroup;
+    private RadioButton modeInvisibleLsb;
+    private RadioButton modeInvisibleFd;
     private Button btnAddText;
     private Button btnAddImg;
     private Button btnDetectImage;
@@ -86,6 +91,11 @@ public class MainActivity extends AppCompatActivity {
         btnDetectText = findViewById(R.id.btn_detect_text);
         btnClear = findViewById(R.id.btn_clear_watermark);
 
+        invisibleMethodsLayout = findViewById(R.id.lay_invisible_methods);
+        invisibleGroup = findViewById(R.id.group_invisible_methods);
+        modeInvisibleLsb = findViewById(R.id.mode_invisible_lsb);
+        modeInvisibleFd = findViewById(R.id.mode_invisible_fd);
+
         editText = findViewById(R.id.editText);
         backgroundView = findViewById(R.id.imageView);
         watermarkView = findViewById(R.id.imageView_watermark);
@@ -96,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
                 R.drawable.test_watermark);
 
         watermarkView.setVisibility(View.GONE);
+        updateInvisibleOptions();
     }
 
     private void initEvents() {
@@ -103,10 +114,10 @@ public class MainActivity extends AppCompatActivity {
         btnAddText.setOnClickListener((View v) -> {
             String markText = editText.getText().toString();
             if(markText.trim().isEmpty()){
-                Toast.makeText(this, "Please Input Text First", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_enter_text_first, Toast.LENGTH_SHORT).show();
                 return;
             }
-            if(mode_invisible.isChecked()){
+            if (mode_invisible.isChecked()) {
                 createInvisibleTextMark();
                 return;
             }
@@ -128,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
 
         // The sample method of adding an image watermark.
         btnAddImg.setOnClickListener((View v) -> {
-            if(mode_invisible.isChecked()){
+            if (mode_invisible.isChecked()) {
                 createInvisibleImgMark();
                 return;
             }
@@ -154,14 +165,17 @@ public class MainActivity extends AppCompatActivity {
         // detect the text watermark.
         btnDetectText.setOnClickListener((View v) -> {
             progressBar.setVisibility(View.VISIBLE);
-            WatermarkDetector.create(backgroundView, true)
+            WatermarkDetector.create(backgroundView, isLsbSelected())
                     .detect(new DetectFinishListener() {
                         @Override
                         public void onSuccess(DetectionReturnValue returnValue) {
                             progressBar.setVisibility(View.GONE);
                             if (returnValue != null) {
-                                Toast.makeText(MainActivity.this, "Successfully detected invisible text: "
-                                        + returnValue.getWatermarkString(), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(MainActivity.this,
+                                        getString(R.string.toast_detect_text_success,
+                                                getSelectedMethodLabel(),
+                                                returnValue.getWatermarkString()),
+                                        Toast.LENGTH_SHORT).show();
                             }
                         }
 
@@ -176,13 +190,14 @@ public class MainActivity extends AppCompatActivity {
         // detect the image watermark.
         btnDetectImage.setOnClickListener((View v) -> {
             progressBar.setVisibility(View.VISIBLE);
-            WatermarkDetector.create(backgroundView, true)
+            WatermarkDetector.create(backgroundView, isLsbSelected())
                     .detect(new DetectFinishListener() {
                         @Override
                         public void onSuccess(DetectionReturnValue returnValue) {
                             progressBar.setVisibility(View.GONE);
                             Toast.makeText(MainActivity.this,
-                                    "Successfully detected invisible watermark!", Toast.LENGTH_SHORT).show();
+                                    getString(R.string.toast_detect_image_success, getSelectedMethodLabel()),
+                                    Toast.LENGTH_SHORT).show();
                             if (returnValue != null) {
                                 watermarkView.setVisibility(View.VISIBLE);
                                 watermarkView.setImageBitmap(returnValue.getWatermarkBitmap());
@@ -204,6 +219,11 @@ public class MainActivity extends AppCompatActivity {
             watermarkView.setVisibility(View.GONE);
         });
 
+        View.OnClickListener modeListener = v -> updateInvisibleOptions();
+        mode_single.setOnClickListener(modeListener);
+        mode_tile.setOnClickListener(modeListener);
+        mode_invisible.setOnClickListener(modeListener);
+
     }
 
     private void createInvisibleImgMark(){
@@ -211,12 +231,13 @@ public class MainActivity extends AppCompatActivity {
         WatermarkBuilder
                 .create(this, backgroundView)
                 .loadWatermarkImage(watermarkBitmap)
-                .setInvisibleWMListener(true, new BuildFinishListener<Bitmap>() {
+                .setInvisibleWMListener(isLsbSelected(), new BuildFinishListener<Bitmap>() {
                     @Override
                     public void onSuccess(Bitmap object) {
                         progressBar.setVisibility(View.GONE);
                         Toast.makeText(MainActivity.this,
-                                "Successfully create invisible watermark!", Toast.LENGTH_SHORT).show();
+                                getString(R.string.toast_create_image_success, getSelectedMethodLabel()),
+                                Toast.LENGTH_SHORT).show();
                         if (object != null) {
                             backgroundView.setImageBitmap(object);
                             // Save to local needs permission.
@@ -238,12 +259,13 @@ public class MainActivity extends AppCompatActivity {
         WatermarkBuilder
                 .create(this, backgroundView)
                 .loadWatermarkText(watermarkText)
-                .setInvisibleWMListener(true, new BuildFinishListener<Bitmap>() {
+                .setInvisibleWMListener(isLsbSelected(), new BuildFinishListener<Bitmap>() {
                     @Override
                     public void onSuccess(Bitmap object) {
                         progressBar.setVisibility(View.GONE);
                         Toast.makeText(MainActivity.this,
-                                "Successfully create invisible watermark!", Toast.LENGTH_SHORT).show();
+                                getString(R.string.toast_create_text_success, getSelectedMethodLabel()),
+                                Toast.LENGTH_SHORT).show();
                         if (object != null) {
                             backgroundView.setImageBitmap(object);
                         }
@@ -255,5 +277,34 @@ public class MainActivity extends AppCompatActivity {
                         Timber.e(message);
                     }
                 });
+    }
+    private boolean isLsbSelected() {
+        if (invisibleGroup == null) {
+            return true;
+        }
+        int checkedId = invisibleGroup.getCheckedRadioButtonId();
+        return checkedId == R.id.mode_invisible_lsb;
+    }
+
+    private String getSelectedMethodLabel() {
+        int checkedId = invisibleGroup != null ? invisibleGroup.getCheckedRadioButtonId() : View.NO_ID;
+        if (checkedId == R.id.mode_invisible_fd) {
+            return getString(R.string.label_invisible_fd);
+        }
+        return getString(R.string.label_invisible_lsb);
+    }
+
+    private void updateInvisibleOptions() {
+        boolean enableInvisibleOptions = mode_invisible.isChecked();
+        if (invisibleMethodsLayout != null) {
+            invisibleMethodsLayout.setEnabled(enableInvisibleOptions);
+            invisibleMethodsLayout.setAlpha(enableInvisibleOptions ? 1f : 0.4f);
+        }
+        if (modeInvisibleLsb != null) {
+            modeInvisibleLsb.setEnabled(enableInvisibleOptions);
+        }
+        if (modeInvisibleFd != null) {
+            modeInvisibleFd.setEnabled(enableInvisibleOptions);
+        }
     }
 }
