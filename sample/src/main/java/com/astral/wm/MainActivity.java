@@ -247,6 +247,7 @@ public class MainActivity extends AppCompatActivity {
                         public void onFailure(String message) {
                             progressBar.setVisibility(View.GONE);
                             Timber.e(message);
+                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
                         }
                     });
         });
@@ -272,6 +273,7 @@ public class MainActivity extends AppCompatActivity {
                         public void onFailure(String message) {
                             progressBar.setVisibility(View.GONE);
                             Timber.e(message);
+                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
                         }
                     });
         });
