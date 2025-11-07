@@ -15,7 +15,8 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.namespace == 'com.android') {
-                useModule("com.android.tools.build:gradle:${requested.version}")
+                def resolvedVersion = requested.version ?: '7.4.2'
+                useModule("com.android.tools.build:gradle:${resolvedVersion}")
             }
         }
     }
