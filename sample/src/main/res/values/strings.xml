@@ -7,10 +7,13 @@
     <string name="btn_detect_image">Detect image</string>
     <string name="btn_detect_text">Detect text</string>
     <string name="btn_clear_watermark">Clear watermarks</string>
+    <string name="btn_save_output">Save output</string>
+    <string name="btn_bulk_image">Bulk watermark</string>
     <string name="btn_load_marked">Load picture</string>
     <string name="btn_choose_background">Choose background</string>
     <string name="btn_choose_watermark">Choose watermark image</string>
     <string name="et_hint">Input watermark text here</string>
+    <string name="placeholder_add_image">Add image first</string>
     <string name="mode_single">Single</string>
     <string name="mode_tile">Tile</string>
     <string name="mode_invisible">Invisible</string>
@@ -25,4 +28,9 @@
     <string name="toast_load_background_failed">Unable to load the selected background image.</string>
     <string name="toast_load_watermark_failed">Unable to load the selected watermark image.</string>
     <string name="toast_watermark_not_ready">Please choose a watermark image first.</string>
+    <string name="toast_no_background">Please add a background image first.</string>
+    <string name="toast_save_success">Saved watermarked image to gallery.</string>
+    <string name="toast_save_failed">Unable to save watermarked image.</string>
+    <string name="toast_bulk_mode_not_supported">Bulk watermarking is only available for visible watermarks.</string>
+    <string name="toast_bulk_complete">Watermarked %1$d of %2$d image(s) and saved them to the gallery.</string>
 </resources>
