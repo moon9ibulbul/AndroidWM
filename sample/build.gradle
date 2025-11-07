@@ -39,8 +39,6 @@ dependencies {
     // glide
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
-    // leakcanary
-    debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.13'
     // timber
     implementation 'com.jakewharton.timber:timber:5.0.1'
 }
