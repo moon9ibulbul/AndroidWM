@@ -18,8 +18,6 @@ package com.astral.wm;
 
 import android.app.Application;
 
-import com.squareup.leakcanary.LeakCanary;
-
 /**
  * To detect the memory leaks.
  */
@@ -28,6 +26,9 @@ public class Leaks extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        LeakCanary.install(this);
+        // LeakCanary 2.x automatically installs itself when the dependency is
+        // added to a debug build. We keep this Application subclass so the
+        // manifest reference remains valid, but no explicit initialization is
+        // required here.
     }
 }
