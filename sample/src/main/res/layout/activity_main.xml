@@ -27,6 +27,28 @@
         android:layout_weight="3"
         android:visibility="gone" />
 
+    <LinearLayout
+        android:id="@+id/layout_image_actions"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_choose_background"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/btn_choose_background" />
+
+        <Button
+            android:id="@+id/btn_choose_watermark"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/btn_choose_watermark" />
+
+    </LinearLayout>
+
     <EditText
         android:id="@+id/editText"
         android:layout_width="match_parent"

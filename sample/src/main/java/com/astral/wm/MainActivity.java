@@ -16,9 +16,13 @@
  */
 package com.astral.wm;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.net.Uri;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -44,6 +48,9 @@ import com.watermark.androidwm.listener.DetectFinishListener;
 import timber.log.Timber;
 //import com.watermark.androidwm.utils.BitmapUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
+
 /**
  * This is the sample for library: androidwm.
  *
@@ -61,6 +68,8 @@ public class MainActivity extends AppCompatActivity {
     private RadioButton modeInvisibleFd;
     private Button btnAddText;
     private Button btnAddImg;
+    private Button btnChooseBackground;
+    private Button btnChooseWatermark;
     private Button btnDetectImage;
     private Button btnDetectText;
     private Button btnClear;
@@ -73,9 +82,15 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressBar progressBar;
 
+    private ActivityResultLauncher<String[]> pickBackgroundLauncher;
+    private ActivityResultLauncher<String[]> pickWatermarkLauncher;
+
+    private static final String[] IMAGE_MIME_TYPES = new String[]{"image/*"};
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        initImagePickers();
         setContentView(R.layout.activity_main);
         initViews();
         initEvents();
@@ -87,6 +102,8 @@ public class MainActivity extends AppCompatActivity {
         mode_invisible = findViewById(R.id.mode_invisible);
         btnAddImg = findViewById(R.id.btn_add_image);
         btnAddText = findViewById(R.id.btn_add_text);
+        btnChooseBackground = findViewById(R.id.btn_choose_background);
+        btnChooseWatermark = findViewById(R.id.btn_choose_watermark);
         btnDetectImage = findViewById(R.id.btn_detect_image);
         btnDetectText = findViewById(R.id.btn_detect_text);
         btnClear = findViewById(R.id.btn_clear_watermark);
@@ -102,10 +119,7 @@ public class MainActivity extends AppCompatActivity {
 
         progressBar = findViewById(R.id.progressBar);
 
-        watermarkBitmap = BitmapFactory.decodeResource(getResources(),
-                R.drawable.test_watermark);
-
-        watermarkView.setVisibility(View.GONE);
+        loadDefaultWatermark();
         updateInvisibleOptions();
     }
 
@@ -139,6 +153,10 @@ public class MainActivity extends AppCompatActivity {
 
         // The sample method of adding an image watermark.
         btnAddImg.setOnClickListener((View v) -> {
+            if (watermarkBitmap == null) {
+                Toast.makeText(this, R.string.toast_watermark_not_ready, Toast.LENGTH_SHORT).show();
+                return;
+            }
             if (mode_invisible.isChecked()) {
                 createInvisibleImgMark();
                 return;
@@ -161,6 +179,10 @@ public class MainActivity extends AppCompatActivity {
                     .setToImageView(backgroundView);
 
         });
+
+        btnChooseBackground.setOnClickListener(v -> pickBackgroundLauncher.launch(IMAGE_MIME_TYPES));
+
+        btnChooseWatermark.setOnClickListener(v -> pickWatermarkLauncher.launch(IMAGE_MIME_TYPES));
 
         // detect the text watermark.
         btnDetectText.setOnClickListener((View v) -> {
@@ -217,6 +239,7 @@ public class MainActivity extends AppCompatActivity {
             Glide.with(this).load(R.drawable.test2)
                     .into(backgroundView);
             watermarkView.setVisibility(View.GONE);
+            loadDefaultWatermark();
         });
 
         View.OnClickListener modeListener = v -> updateInvisibleOptions();
@@ -305,6 +328,78 @@ public class MainActivity extends AppCompatActivity {
         }
         if (modeInvisibleFd != null) {
             modeInvisibleFd.setEnabled(enableInvisibleOptions);
+        }
+    }
+
+    private void initImagePickers() {
+        pickBackgroundLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+            if (uri != null) {
+                loadBackgroundFromUri(uri);
+            }
+        });
+        pickWatermarkLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+            if (uri != null) {
+                loadWatermarkFromUri(uri);
+            }
+        });
+    }
+
+    private void loadBackgroundFromUri(Uri uri) {
+        try {
+            getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException exception) {
+            Timber.w(exception, "Unable to persist permission for background uri");
+        }
+
+        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+            if (inputStream == null) {
+                Toast.makeText(this, R.string.toast_load_background_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+        } catch (IOException e) {
+            Timber.e(e, "Failed to verify background image");
+            Toast.makeText(this, R.string.toast_load_background_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Glide.with(this)
+                .load(uri)
+                .error(R.drawable.test2)
+                .into(backgroundView);
+        watermarkView.setVisibility(View.GONE);
+    }
+
+    private void loadWatermarkFromUri(Uri uri) {
+        try {
+            getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException exception) {
+            Timber.w(exception, "Unable to persist permission for watermark uri");
+        }
+
+        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+            if (inputStream == null) {
+                Toast.makeText(this, R.string.toast_load_watermark_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            if (bitmap == null) {
+                Toast.makeText(this, R.string.toast_load_watermark_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            watermarkBitmap = bitmap;
+            watermarkView.setVisibility(View.VISIBLE);
+            watermarkView.setImageBitmap(bitmap);
+        } catch (IOException e) {
+            Timber.e(e, "Failed to load watermark image");
+            Toast.makeText(this, R.string.toast_load_watermark_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void loadDefaultWatermark() {
+        watermarkBitmap = BitmapFactory.decodeResource(getResources(),
+                R.drawable.test_watermark);
+        if (watermarkView != null) {
+            watermarkView.setVisibility(View.GONE);
         }
     }
 }
