@@ -1,12 +1,23 @@
 <resources>
-    <string name="app_name">androidWM</string>
-    <string name="btn_add_text">create text</string>
-    <string name="btn_add_image">create image</string>
-    <string name="btn_add_invisible_image">invisible image</string>
-    <string name="btn_add_invisible_text">invisible text</string>
-    <string name="btn_detect_image">detect image</string>
-    <string name="btn_detect_text">detect text</string>
+    <string name="app_name">AstralWM</string>
+    <string name="btn_add_text">Create text watermark</string>
+    <string name="btn_add_image">Create image watermark</string>
+    <string name="btn_add_invisible_image">Invisible image</string>
+    <string name="btn_add_invisible_text">Invisible text</string>
+    <string name="btn_detect_image">Detect image</string>
+    <string name="btn_detect_text">Detect text</string>
     <string name="btn_clear_watermark">Clear watermarks</string>
     <string name="btn_load_marked">Load picture</string>
-    <string name="et_hint">input mark text here</string>
+    <string name="et_hint">Input watermark text here</string>
+    <string name="mode_single">Single</string>
+    <string name="mode_tile">Tile</string>
+    <string name="mode_invisible">Invisible</string>
+    <string name="label_invisible_methods">Invisible method:</string>
+    <string name="label_invisible_lsb">LSB</string>
+    <string name="label_invisible_fd">Frequency</string>
+    <string name="toast_create_image_success">Created %1$s invisible watermark image.</string>
+    <string name="toast_create_text_success">Created %1$s invisible watermark text.</string>
+    <string name="toast_detect_image_success">Detected %1$s invisible image watermark.</string>
+    <string name="toast_detect_text_success">Detected %1$s invisible text: %2$s</string>
+    <string name="toast_enter_text_first">Please input text first.</string>
 </resources>

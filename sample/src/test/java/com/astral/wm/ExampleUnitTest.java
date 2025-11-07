@@ -1,4 +1,4 @@
-package com.watermark.androidwm.sample;
+package com.astral.wm;
 
 import org.junit.Test;
 
