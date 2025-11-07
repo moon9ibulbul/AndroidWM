@@ -13,12 +13,28 @@
         android:layout_gravity="center"
         android:visibility="gone" />
 
-    <ImageView
-        android:id="@+id/imageView"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="5"
-        android:src="@drawable/test2" />
+        android:layout_weight="5">
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/placeholder_add_image"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/text_placeholder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/placeholder_add_image"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+            android:textColor="@android:color/darker_gray" />
+
+    </FrameLayout>
 
     <ImageView
         android:id="@+id/imageView_watermark"
@@ -46,6 +62,13 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="@string/btn_choose_watermark" />
+
+        <Button
+            android:id="@+id/btn_bulk_image"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/btn_bulk_image" />
 
     </LinearLayout>
 
@@ -189,6 +212,13 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="@string/btn_clear_watermark" />
+
+        <Button
+            android:id="@+id/btn_save_output"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/btn_save_output" />
 
 
     </LinearLayout>
