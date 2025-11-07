@@ -119,6 +119,31 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/lay_position_selector"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:id="@+id/label_watermark_position"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/label_watermark_position"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+
+        <Spinner
+            android:id="@+id/spinner_watermark_position"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/lay_invisible_methods"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

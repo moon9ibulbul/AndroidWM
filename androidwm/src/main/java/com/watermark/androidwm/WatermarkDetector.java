@@ -57,6 +57,12 @@ public final class WatermarkDetector {
      * @return instance of {@link WatermarkDetector}
      */
     public static WatermarkDetector create(ImageView imageView, boolean isLSB) {
+        if (imageView == null || imageView.getDrawable() == null) {
+            throw new IllegalArgumentException("ImageView does not contain a bitmap");
+        }
+        if (!(imageView.getDrawable() instanceof BitmapDrawable)) {
+            throw new IllegalArgumentException("ImageView drawable must be a BitmapDrawable");
+        }
         BitmapDrawable drawable = (BitmapDrawable) imageView.getDrawable();
         return new WatermarkDetector(drawable.getBitmap(), isLSB);
     }

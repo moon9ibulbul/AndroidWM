@@ -27,6 +27,7 @@ import com.watermark.androidwm.listener.BuildFinishListener;
 import com.watermark.androidwm.bean.AsyncTaskParams;
 import com.watermark.androidwm.utils.FastDctFft;
 
+import static com.watermark.androidwm.utils.BitmapUtils.bitmapToString;
 import static com.watermark.androidwm.utils.BitmapUtils.pixel2ARGBArray;
 import static com.watermark.androidwm.utils.BitmapUtils.getBitmapPixels;
 import static com.watermark.androidwm.utils.BitmapUtils.textAsBitmap;
@@ -34,7 +35,15 @@ import static com.watermark.androidwm.utils.Constant.ERROR_CREATE_FAILED;
 import static com.watermark.androidwm.utils.Constant.ERROR_NO_BACKGROUND;
 import static com.watermark.androidwm.utils.Constant.ERROR_NO_WATERMARKS;
 import static com.watermark.androidwm.utils.Constant.ERROR_PIXELS_NOT_ENOUGH;
+import static com.watermark.androidwm.utils.Constant.FD_IMG_PREFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_IMG_SUFFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_TEXT_PREFIX_FLAG;
+import static com.watermark.androidwm.utils.Constant.FD_TEXT_SUFFIX_FLAG;
+import static com.watermark.androidwm.utils.StringUtils.copyFromDoubleArray;
 import static com.watermark.androidwm.utils.StringUtils.copyFromIntArray;
+import static com.watermark.androidwm.utils.StringUtils.replaceSingleDigit;
+import static com.watermark.androidwm.utils.StringUtils.stringToBinary;
+import static com.watermark.androidwm.utils.StringUtils.stringToIntArray;
 
 /**
  * This is a tack that use Fast Fourier Transform for an image, to
@@ -71,90 +80,50 @@ public class FDWatermarkTask extends AsyncTask<AsyncTaskParams, Void, Bitmap> {
             return null;
         }
 
-        int[] watermarkPixels = getBitmapPixels(watermarkBitmap);
-        int[] watermarkColorArray = pixel2ARGBArray(watermarkPixels);
+        String watermarkBinary;
+        if (watermarkText != null) {
+            watermarkBinary = stringToBinary(watermarkText.getText());
+            watermarkBinary = FD_TEXT_PREFIX_FLAG + watermarkBinary + FD_TEXT_SUFFIX_FLAG;
+        } else {
+            watermarkBinary = stringToBinary(bitmapToString(watermarkBitmap));
+            watermarkBinary = FD_IMG_PREFIX_FLAG + watermarkBinary + FD_IMG_SUFFIX_FLAG;
+        }
+
+        int[] watermarkColorArray = stringToIntArray(watermarkBinary);
+        int[] backgroundPixels = getBitmapPixels(backgroundBitmap);
+        int[] backgroundColorArray = pixel2ARGBArray(backgroundPixels);
+
+        if (watermarkColorArray.length > backgroundColorArray.length) {
+            listener.onFailure(ERROR_PIXELS_NOT_ENOUGH);
+            return null;
+        }
+
+        double[] frequencyArray = copyFromIntArray(backgroundColorArray);
+        FastDctFft.transform(frequencyArray);
+
+        for (int i = 0; i < watermarkColorArray.length; i++) {
+            frequencyArray[i] = replaceSingleDigit(frequencyArray[i], watermarkColorArray[i]);
+        }
+
+        FastDctFft.inverseTransform(frequencyArray);
+        int[] resultColorArray = copyFromDoubleArray(frequencyArray);
+
         Bitmap outputBitmap = Bitmap.createBitmap(backgroundBitmap.getWidth(), backgroundBitmap.getHeight(),
                 backgroundBitmap.getConfig());
 
-        // convert the background bitmap into pixel array.
-        int[] backgroundPixels = getBitmapPixels(backgroundBitmap);
-
-        if (watermarkColorArray.length > backgroundPixels.length * 4) {
-            listener.onFailure(ERROR_PIXELS_NOT_ENOUGH);
-        } else {
-            // divide and conquer
-            // use fixed chunk size or the size of watermark image.
-            if (backgroundPixels.length < watermarkColorArray.length) {
-                int[] backgroundColorArray = pixel2ARGBArray(backgroundPixels);
-                double[] backgroundColorArrayD = copyFromIntArray(backgroundColorArray);
-
-                FastDctFft.transform(backgroundColorArrayD);
-
-                //TODO: do the operations.
-
-                FastDctFft.inverseTransform(backgroundColorArrayD);
-                for (int i = 0; i < backgroundPixels.length; i++) {
-                    int color = Color.argb(
-                            (int) backgroundColorArrayD[4 * i],
-                            (int) backgroundColorArrayD[4 * i + 1],
-                            (int) backgroundColorArrayD[4 * i + 2],
-                            (int) backgroundColorArrayD[4 * i + 3]
-                    );
-
-                    backgroundPixels[i] = color;
-                }
-            } else {
-                // use fixed chunk size or the size of watermark image.
-                int numOfChunks = (int) Math.ceil((double) backgroundPixels.length / watermarkColorArray.length);
-                for (int i = 0; i < numOfChunks; i++) {
-                    int start = i * watermarkColorArray.length;
-                    int length = Math.min(backgroundPixels.length - start, watermarkColorArray.length);
-                    int[] temp = new int[length];
-                    System.arraycopy(backgroundPixels, start, temp, 0, length);
-                    double[] colorTempD = copyFromIntArray(pixel2ARGBArray(temp));
-                    FastDctFft.transform(colorTempD);
-
-//                    for (int j = 0; j < length; j++) {
-//                        colorTempD[4 * j] = colorTempD[4 * j] + watermarkColorArray[j];
-//                        colorTempD[4 * j + 1] = colorTempD[4 * j + 1] + watermarkColorArray[j];
-//                        colorTempD[4 * j + 2] = colorTempD[4 * j + 2] + watermarkColorArray[j];
-//                        colorTempD[4 * j + 3] = colorTempD[4 * j + 3] + watermarkColorArray[j];
-//                    }
-
-                    double enhanceNum = 1;
-
-                    // The energy in frequency scaled.
-                    for (int j = 0; j < length; j++) {
-                        colorTempD[4 * j] = colorTempD[4 * j] * enhanceNum;
-                        colorTempD[4 * j + 1] = colorTempD[4 * j + 1] * enhanceNum;
-                        colorTempD[4 * j + 2] = colorTempD[4 * j + 2] * enhanceNum;
-                        colorTempD[4 * j + 3] = colorTempD[4 * j + 3] * enhanceNum;
-                    }
-
-                    //TODO: do the operations.
-
-
-                    FastDctFft.inverseTransform(colorTempD);
-
-                    for (int j = 0; j < length; j++) {
-                        int color = Color.argb(
-                                (int) colorTempD[4 * j],
-                                (int) colorTempD[4 * j + 1],
-                                (int) colorTempD[4 * j + 2],
-                                (int) colorTempD[4 * j + 3]
-                        );
-
-                        backgroundPixels[start + j] = color;
-                    }
-                }
-            }
-
-            outputBitmap.setPixels(backgroundPixels, 0, backgroundBitmap.getWidth(), 0, 0,
-                    backgroundBitmap.getWidth(), backgroundBitmap.getHeight());
-            return outputBitmap;
+        for (int i = 0; i < backgroundPixels.length; i++) {
+            int color = Color.argb(
+                    clampColor(resultColorArray[4 * i]),
+                    clampColor(resultColorArray[4 * i + 1]),
+                    clampColor(resultColorArray[4 * i + 2]),
+                    clampColor(resultColorArray[4 * i + 3])
+            );
+            backgroundPixels[i] = color;
         }
 
-        return null;
+        outputBitmap.setPixels(backgroundPixels, 0, backgroundBitmap.getWidth(), 0, 0,
+                backgroundBitmap.getWidth(), backgroundBitmap.getHeight());
+        return outputBitmap;
     }
 
     @Override
@@ -184,6 +153,16 @@ public class FDWatermarkTask extends AsyncTask<AsyncTaskParams, Void, Bitmap> {
                     * (normalizedHigh - normalizedLow) + normalizedLow;
         }
         return inputArray;
+    }
+
+    private int clampColor(int value) {
+        if (value < 0) {
+            return 0;
+        }
+        if (value > 255) {
+            return 255;
+        }
+        return value;
     }
 
 }

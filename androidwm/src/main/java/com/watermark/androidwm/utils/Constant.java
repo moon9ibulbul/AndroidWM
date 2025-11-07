@@ -27,6 +27,11 @@ public class Constant {
     public static final String LSB_IMG_SUFFIX_FLAG = "3434";
     public static final String LSB_TEXT_SUFFIX_FLAG = "4545";
 
+    public static final String FD_IMG_PREFIX_FLAG = "5656";
+    public static final String FD_TEXT_PREFIX_FLAG = "6767";
+    public static final String FD_IMG_SUFFIX_FLAG = "7878";
+    public static final String FD_TEXT_SUFFIX_FLAG = "8989";
+
     public static final int MAX_IMAGE_SIZE = 1024;
     // use the watermark image's size
     public static final int CHUNK_SIZE = 5000;
